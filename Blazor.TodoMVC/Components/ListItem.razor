@@ -1,0 +1,56 @@
+﻿
+@inject IJSRuntime JSRuntime
+
+
+@using Blazor.TodoMVC.Data
+<li class="@(Item.Completed ? "completed":"") @(Item.IsEdited ? "editing":"")">
+    <div class="view">
+        <input class="toggle" type="checkbox" @onchange="CheckedChanged">
+        <label @ondblclick="EditItem">@Item.Text</label>
+        <button class="destroy" @onclick="DeleteItem"></button>
+    </div>
+    <input @ref="itemText" class="edit" @bind="Item.Text" @onkeyup="ItemTextKeyUp">
+</li>
+
+@functions {
+    [Parameter]
+    public ListItemModel Item { get; set; }
+
+    [Parameter]
+    public EventCallback<ListItemModel> OnRemoveCallback { get; set; }
+    [Parameter]
+    public EventCallback<ListItemModel> OnItemChanged { get; set; }
+
+    private ElementReference itemText;
+
+    public async Task DeleteItem()
+    {
+        await OnRemoveCallback.InvokeAsync(Item);
+    }
+
+    public async Task EditItem()
+    {
+        Item.IsEdited = true;
+        await OnItemChanged.InvokeAsync(Item);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(Item.IsEdited)
+            await JSRuntime.InvokeVoidAsync("JsFunctions.focusElement", itemText);
+    }
+
+    private void ItemTextKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" &&!string.IsNullOrEmpty(Item.Text.Trim()))
+        {
+            Item.IsEdited = false;
+        }
+    }
+
+    private async Task CheckedChanged(ChangeEventArgs e)
+    {
+        Item.Completed = (bool) e.Value;
+        await OnItemChanged.InvokeAsync(Item);
+    }
+}
